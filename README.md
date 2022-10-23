@@ -48,9 +48,9 @@ FIFO（First in First out），经常用来对跨时钟域多bit数据的同步�
 
 ```
 module bin2gray #(parameter SIZE = 4)
-(output logic \[SIZE-1:0\] gray,
-input logic \[SIZE-1:0\] bin);
-assign gray = (bin>\>1) ^ bin;
+(output logic [SIZE-1:0] gray,
+ input  logic [SIZE-1:0] bin);
+assign gray = (bin>>1) ^ bin;
 endmodule
 ```
 
@@ -58,52 +58,53 @@ endmodule
 为了将格雷码值转换成等价的二进制码值，以n位格雷码值为例，二进制位0等于格雷码位0与从1到n的所有其他格雷码位进行异或。二进制位1等于格雷码位1与从2到n的所有其他格雷码位进行异或，依此类推。最高有效二进制位恰好等于最高有效格雷码位。示例4位格雷到二进制转换的公式如下所示：
 
 ```
-bin\[0\] = gray\[3\] ^ gray\[2\] ^ gray\[1\] ^ gray\[0\];
-bin\[1\] = gray\[3\] ^ gray\[2\] ^ gray\[1\];
-bin\[2\] = gray\[3\] ^ gray\[2\];
-bin\[3\] = gray\[3\];
+bin[0] = gray[3] ^ gray[2] ^ gray[1] ^ gray[0];
+bin[1] = gray[3] ^ gray[2] ^ gray[1];
+bin[2] = gray[3] ^ gray[2];
+bin[3] = gray[3];
 ```
 
 对格雷-二进制转换器进行编码的最简单方法是编写一个for循环，并对具有可变索引范围的格雷码向量进行异或运算，每次循环中索引范围的LSB都会增加，直到我们得到一个简单的赋值bin\[MSB\]=^Gray\[MSB：MSB\](就是格雷码向量的1位MSB)，如下所示
 
 ```
 module gray2bin_bad #(parameter SIZE = 4)
-(output logic \[SIZE-1:0\] bin,
-input logic \[SIZE-1:0\] gray);
-// Syntax Error - variable index range
-always_comb
-for (int i=0; i\<SIZE; i++)
-bin\[i\] = ^(gray\[SIZE-1:i\]);
+ (output logic [SIZE-1:0] bin,
+  input  logic [SIZE-1:0] gray);
+  // Syntax Error - variable index range
+  always_comb
+    for (int i=0; i<SIZE; i++)
+      bin[i] = ^(gray[SIZE-1:i]);
 endmodule
 ```
 
 不幸的是，Verilog和SystemVerilog不允许使用变量索引范围进行部分选择，因此上述示例的代码虽然在概念上是正确的，但不会编译。要解决这个问题，请记住异或门实际上是可编程逆变器。如果一个输入是高的，则另一个输入被反转并传递给输出。类似地，如果一个输入被绑定为低，则另一个输入被传递到输出而不进行反转(从输入到输出没有变化)。利用涉及0输入的任何加法异或运算不会改变运算结果这一事实，实现格雷码到二进制转换的方法是对有效格雷码比特进行异或，并填充0。
 
 ```
-bin\[0\] = gray\[3\] ^ gray\[2\] ^ gray\[1\] ^ gray\[0\] ; // gray>\>0
-bin\[1\] = 1'b0 ^ gray\[3\] ^ gray\[2\] ^ gray\[1\] ; // gray>\>1
-bin\[2\] = 1'b0 ^ 1'b0 ^ gray\[3\] ^ gray\[2\] ; // gray>\>2
-bin\[3\] = 1'b0 ^ 1'b0 ^ 1'b0 ^ gray\[3\] ; // gray>\>3
+bin[0] = gray[3] ^ gray[2] ^ gray[1] ^ gray[0] ; // gray>>0
+bin[1] =   1'b0  ^ gray[3] ^ gray[2] ^ gray[1] ; // gray>>1
+bin[2] =   1'b0  ^   1'b0  ^ gray[3] ^ gray[2] ; // gray>>2
+bin[3] =   1'b0  ^   1'b0  ^   1'b0  ^ gray[3] ; // gray>>3
 ```
 
 将上述转化为如下形式，是可以编译的。下面给出了两种形式，一种是SV模型，另一种是对于Verilog支持的generate for形式。
 
 ```
 module gray2bin #(parameter SIZE = 4)
-(output logic \[SIZE-1:0\] bin,
-input logic \[SIZE-1:0\] gray);
-always_comb
-for (int i=0; i\<SIZE; i++)
-bin\[i\] = ^(gray>\>i);
+ (output logic [SIZE-1:0] bin,
+  input  logic [SIZE-1:0] gray);
+  always_comb
+    for (int i=0; i<SIZE; i++)
+      bin[i] = ^(gray>>i);
 endmodule
 
+
 module gray2bin #(parameter SIZE = 4)
-(output wire \[SIZE-1:0\] bin,
-input wire \[SIZE-1:0\] gray);
+ (output wire [SIZE-1:0] bin,
+  input  wire [SIZE-1:0] gray);
 genvar i;
 generate
-for (int i=0; i\<SIZE; i++) begin: loop_name_a
-assign bin\[i\] = ^(gray>\>i);
+for (int i=0; i<SIZE; i++)   begin: loop_name_a
+assign bin[i] = ^(gray>>i);
 end
 endgenerate
 endmodule
